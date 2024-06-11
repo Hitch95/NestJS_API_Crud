@@ -1,31 +1,44 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { User } from './user.entity';
 import { UsersService } from './users.service';
-import * as bcrypt from 'bcrypt';
+import { randomBytes, scrypt as _scrypt } from 'crypto';
+import { promisify } from 'util';
+
+const scrypt = promisify(_scrypt);
 
 @Injectable()
 export class AuthService {
   constructor(private usersService: UsersService) {}
 
-  async signIn(email: string, password: string): Promise<User> {
-    const user = await this.usersService.find(email);
-    if (!user.length) {
-      throw new UnauthorizedException('Invalid credentials');
+  async signIn(email: string, password: string) {
+    const [user] = await this.usersService.find(email);
+    if (!user) {
+      throw new NotFoundException('User not found');
     }
-    const isMatch = await bcrypt.compare(password, user[0].password);
-    if (!isMatch) {
-      throw new UnauthorizedException('Invalid credentials');
+
+    const [salt, storedHash] = user.password.split('.');
+    const hash = (await scrypt(password, salt, 32)) as Buffer;
+    if (storedHash !== hash.toString('hex')) {
+      throw new UnauthorizedException('Wrong password');
     }
-    return user[0];
+    return user;
   }
 
-  async signUp(email: string, password: string): Promise<User> {
-    const user = await this.usersService.find(email);
-    if (user.length) {
-      throw new Error('User already exists');
+  async signUp(email: string, password: string) {
+    const users = await this.usersService.find(email);
+    if (users.length) {
+      throw new BadRequestException('Email already in use');
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
-    return this.usersService.create(email, hashedPassword);
+    const salt = randomBytes(8).toString('hex');
+    const hash = (await scrypt(password, salt, 32)) as Buffer;
+    const result = salt + '.' + hash.toString('hex');
+    const user = await this.usersService.create(email, result);
+    return user;
   }
 }

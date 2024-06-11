@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -9,7 +8,6 @@ import {
   Patch,
   Post,
   Query,
-  UnauthorizedException,
   UseInterceptors,
 } from '@nestjs/common';
 import createUserDto from '../dto/create-user.dto';
@@ -19,13 +17,13 @@ import { AuthService } from './auth.service';
 import { SerializeInterceptor } from 'src/interceptors/serializeInterceptor';
 
 @Controller('auth')
+@UseInterceptors(SerializeInterceptor)
 export class UsersController {
   constructor(
     private userService: UsersService,
     private authService: AuthService,
   ) {}
   @Get()
-  // Implementation for getting all users
   findUserByEmail(@Query('email') email: string) {
     const user = this.userService.find(email);
     return user;
@@ -42,23 +40,13 @@ export class UsersController {
   }
 
   @Post('/signup')
-  async signUp(@Body() body: createUserDto) {
-    try {
-      const user = await this.authService.signUp(body.email, body.password);
-      return { message: 'User successfully registered', user };
-    } catch (error) {
-      throw new BadRequestException(error.message);
-    }
+  async createUser(@Body() body: createUserDto) {
+    return await this.authService.signUp(body.email, body.password);
   }
 
   @Post('/signin')
-  async signIn(@Body() body: createUserDto) {
-    try {
-      const user = await this.authService.signIn(body.email, body.password);
-      return { message: 'User successfully signed in', user };
-    } catch (error) {
-      throw new UnauthorizedException(error.message);
-    }
+  async loginUser(@Body() body: createUserDto) {
+    return await this.authService.signIn(body.email, body.password);
   }
 
   @Patch(':id')
