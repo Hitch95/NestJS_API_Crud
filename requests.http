@@ -1,0 +1,11 @@
+
+POST http://localhost:3002/auth/signup
+Content-Type: application/json
+
+{
+    "email": "john@yahoo.fr",
+    "password": "test3"
+}
+
+### GET USER BY ID
+GET http://localhost:3002/auth/1
