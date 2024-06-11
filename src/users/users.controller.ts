@@ -1,21 +1,29 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
   Get,
+  NotFoundException,
   Param,
   Patch,
   Post,
-  Put,
   Query,
+  UnauthorizedException,
+  UseInterceptors,
 } from '@nestjs/common';
 import createUserDto from '../dto/create-user.dto';
 import updateUserDto from 'src/dto/update-user.dto';
 import { UsersService } from './users.service';
+import { AuthService } from './auth.service';
+import { SerializeInterceptor } from 'src/interceptors/serializeInterceptor';
 
 @Controller('auth')
 export class UsersController {
-  constructor(private userService: UsersService) {}
+  constructor(
+    private userService: UsersService,
+    private authService: AuthService,
+  ) {}
   @Get()
   // Implementation for getting all users
   findUserByEmail(@Query('email') email: string) {
@@ -24,15 +32,33 @@ export class UsersController {
   }
 
   @Get('/:id')
-  findById(@Param('id') id: number) {
-    const user = this.userService.findOne(id);
-    console.log('findById ' + user);
+  @UseInterceptors(SerializeInterceptor)
+  async findById(@Param('id') id: number) {
+    const user = await this.userService.findOne(id);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
     return user;
   }
 
   @Post('/signup')
-  createUser(@Body() body: createUserDto) {
-    return this.userService.create(body.email, body.password);
+  async signUp(@Body() body: createUserDto) {
+    try {
+      const user = await this.authService.signUp(body.email, body.password);
+      return { message: 'User successfully registered', user };
+    } catch (error) {
+      throw new BadRequestException(error.message);
+    }
+  }
+
+  @Post('/signin')
+  async signIn(@Body() body: createUserDto) {
+    try {
+      const user = await this.authService.signIn(body.email, body.password);
+      return { message: 'User successfully signed in', user };
+    } catch (error) {
+      throw new UnauthorizedException(error.message);
+    }
   }
 
   @Patch(':id')
