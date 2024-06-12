@@ -1,5 +1,0 @@
-import { IsNumber, IsString } from 'class-validator';
-
-export class createReportDto {}
-
-export default createReportDto;

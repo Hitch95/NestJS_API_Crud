@@ -8,17 +8,19 @@ import {
   Patch,
   Post,
   Query,
+  UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
-// import fichier dto si il y a //
 import { updateReportDto } from '../dto/update-report.dto';
-// import fichier decorateur si il y a //
 import { ReportsService } from './reports.service';
 import { Report } from './report.entity';
 import { SerializeInterceptor } from 'src/interceptors/serializeInterceptor';
+import { AuthGuard } from 'src/users/guards/auth.guards';
+import { CreateReportDto } from 'src/dto/create-report-dto';
+import { CurrentUser } from 'src/users/decorator/current-user.decorator';
+import { User } from 'src/users/user.entity';
 
-@Controller('report')
-@UseInterceptors(SerializeInterceptor)
+@Controller('reports')
 export class ReportsController {
   constructor(private reportService: ReportsService) {}
   @Get()
@@ -38,16 +40,9 @@ export class ReportsController {
   }
 
   @Post()
-  createReport(@Body() body: Report) {
-    return this.reportService.create(
-      body.price,
-      body.make,
-      body.model,
-      body.year,
-      body.lat,
-      body.lng,
-      body.mileage,
-    );
+  @UseGuards(AuthGuard)
+  createReport(@Body() body: CreateReportDto, @CurrentUser() user: User) {
+    this.reportService.create(body, user);
   }
 
   @Patch(':id')
