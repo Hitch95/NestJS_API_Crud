@@ -22,9 +22,10 @@ export class AuthService {
     }
 
     const [salt, storedHash] = user.password.split('.');
+    console.log('PWD', password);
     const hash = (await scrypt(password, salt, 32)) as Buffer;
     if (storedHash !== hash.toString('hex')) {
-      throw new UnauthorizedException('Wrong password');
+      throw new BadRequestException('Bad user / password combination');
     }
     return user;
   }

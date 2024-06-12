@@ -8,6 +8,7 @@ import {
   Patch,
   Post,
   Query,
+  Session,
   UseInterceptors,
 } from '@nestjs/common';
 import createUserDto from '../dto/create-user.dto';
@@ -40,13 +41,17 @@ export class UsersController {
   }
 
   @Post('/signup')
-  async createUser(@Body() body: createUserDto) {
-    return await this.authService.signUp(body.email, body.password);
+  async createUser(@Body() body: createUserDto, @Session() session: any) {
+    const newUser = await this.authService.signUp(body.email, body.password);
+    session.userId = newUser.id;
+    return newUser;
   }
 
   @Post('/signin')
-  async loginUser(@Body() body: createUserDto) {
-    return await this.authService.signIn(body.email, body.password);
+  async signIn(@Body() body: createUserDto, @Session() session: any) {
+    const user = await this.authService.signIn(body.email, body.password);
+    session.userId = user.id;
+    return user;
   }
 
   @Patch(':id')
