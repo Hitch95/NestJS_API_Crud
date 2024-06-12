@@ -9,6 +9,7 @@ import {
   Post,
   Query,
   Session,
+  UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
 import createUserDto from '../dto/create-user.dto';
@@ -16,9 +17,14 @@ import updateUserDto from 'src/dto/update-user.dto';
 import { UsersService } from './users.service';
 import { AuthService } from './auth.service';
 import { SerializeInterceptor } from 'src/interceptors/serializeInterceptor';
+import { CurrentUserInterceptor } from './interceptor/current-user-interceptor';
+import { AuthGuard } from './guards/auth.guards';
+import { User } from './user.entity';
+import { CurrentUser } from './decorator/current-user.decorator';
 
 @Controller('auth')
 @UseInterceptors(SerializeInterceptor)
+@UseInterceptors(CurrentUserInterceptor)
 export class UsersController {
   constructor(
     private userService: UsersService,
@@ -41,18 +47,14 @@ export class UsersController {
   }
 
   @Get('/whoAmi')
-  async getUserSession(@Session() session: any) {
-    const user = await this.userService.findOne(session.userId);
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
+  @UseGuards(AuthGuard)
+  async whoAmi(@CurrentUser() user: User) {
     return user;
   }
 
-  @Get('/signout')
+  @Post('/signout')
   async signOut(@Session() session: any) {
     session.userId = null;
-    return { message: 'User signed out' };
   }
 
   @Post('/signup')
