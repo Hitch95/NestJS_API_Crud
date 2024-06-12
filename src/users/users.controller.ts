@@ -40,6 +40,21 @@ export class UsersController {
     return user;
   }
 
+  @Get('/whoAmi')
+  async getUserSession(@Session() session: any) {
+    const user = await this.userService.findOne(session.userId);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    return user;
+  }
+
+  @Get('/signout')
+  async signOut(@Session() session: any) {
+    session.userId = null;
+    return { message: 'User signed out' };
+  }
+
   @Post('/signup')
   async createUser(@Body() body: createUserDto, @Session() session: any) {
     const newUser = await this.authService.signUp(body.email, body.password);
