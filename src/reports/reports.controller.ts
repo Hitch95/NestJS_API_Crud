@@ -1,62 +1,49 @@
 import {
   Body,
   Controller,
-  Delete,
-  Get,
-  NotFoundException,
-  Param,
-  Patch,
   Post,
-  Query,
+  Patch,
+  Param,
   UseGuards,
-  UseInterceptors,
+  Get,
+  Query,
 } from '@nestjs/common';
-import { updateReportDto } from '../dto/update-report.dto';
+import { CreateReportDto } from './dtos/create-report.dto';
 import { ReportsService } from './reports.service';
-import { Report } from './report.entity';
-import { SerializeInterceptor } from 'src/interceptors/serializeInterceptor';
-import { AuthGuard } from 'src/users/guards/auth.guards';
-import { CreateReportDto } from 'src/dto/create-report-dto';
-import { CurrentUser } from 'src/users/decorator/current-user.decorator';
-import { User } from 'src/users/user.entity';
+import { AuthGuard } from '../guards/auth.guard';
+import { CurrentUser } from '../users/decorator/current-user.decorator';
+import { User } from '../users/user.entity';
+import { ReportDto } from './dtos/report.dto';
+import { Serialize } from '../interceptors/serializeInterceptor';
+import { ApproveReportDto } from './dtos/approve-report.dto';
+import { AdminGuard } from '../guards/admin.guard';
+import { GetEstimateDto } from './dtos/get-estimate.dto';
 
 @Controller('reports')
 export class ReportsController {
-  constructor(private reportService: ReportsService) {}
-  @Get()
-  findReportByModel(@Query('model') model: string) {
-    const report = this.reportService.find(model);
-    return report;
-  }
+  constructor(private reportsService: ReportsService) {}
 
-  @Get('/:id')
-  @UseInterceptors(SerializeInterceptor)
-  async findById(@Param('id') id: number) {
-    const report = await this.reportService.findOne(id);
-    if (!report) {
-      throw new NotFoundException('Report not found');
-    }
-    return report;
+  @Get()
+  getEstimate(@Query() query: GetEstimateDto) {
+    return this.reportsService.createEstimate(query);
   }
 
   @Post()
   @UseGuards(AuthGuard)
+  @Serialize(ReportDto)
   createReport(@Body() body: CreateReportDto, @CurrentUser() user: User) {
-    this.reportService.create(body, user);
+    return this.reportsService.create(body, user);
   }
 
-  @Patch(':id')
-  async updateReport(
-    @Param('id') id: string,
-    @Body() updateReportDto: updateReportDto,
-  ) {
-    const reportId = parseInt(id);
-    await this.reportService.update(reportId, updateReportDto);
-    return { message: 'Report updated successfully' };
+  @Patch('/:id')
+  @UseGuards(AdminGuard)
+  approveReport(@Param('id') id: string, @Body() body: ApproveReportDto) {
+    return this.reportsService.changeApproval(id, body.approved);
   }
 
-  @Delete('/:id')
-  remove(@Param('id') id: string) {
-    return this.reportService.remove(parseInt(id));
+  @Get('stats')
+  @UseGuards(AdminGuard)
+  getStatsCars() {
+    return this.reportsService.getStatsCars();
   }
 }

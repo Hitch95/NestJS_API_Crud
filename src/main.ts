@@ -1,38 +1,34 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { INestApplication } from '@nestjs/common';
-
+import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { CurrentUserInterceptor } from './users/interceptor/current-user-interceptor';
+import { UsersService } from './users/users.service';
 const cookieSession = require('cookie-session');
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  app.use(
-    cookieSession({
-      keys: ['esgi'],
-    }),
-  );
 
-  await app.listen(3000);
-  displayRoutes(app);
+  await app.listen(process.env.PORT || 3000);
+
+  await displayRoutes(app);
 }
 
-function displayRoutes(app: INestApplication) {
+async function displayRoutes(app: INestApplication) {
   const server = app.getHttpServer();
   const router = server._events.request._router;
-  const availableRoutes = router.stack
+  const availableRoutes: [] = router.stack
     .map((layer) => {
       if (layer.route) {
         return {
           route: {
-            path: layer.route.path,
-            method: layer.route.stack[0].method,
+            path: layer.route?.path,
+            method: layer.route?.stack[0].method,
           },
         };
       }
     })
-    .filter((route: unknown) => route !== undefined);
-
-  console.log(availableRoutes);
+    .filter((item) => item !== undefined);
+  console.log('Availables routes :', availableRoutes);
 }
 
 bootstrap();

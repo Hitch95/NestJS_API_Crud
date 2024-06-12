@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from './user.entity';
+import { InjectRepository } from '@nestjs/typeorm';
 
 @Injectable()
 export class UsersService {
@@ -13,8 +13,10 @@ export class UsersService {
   }
 
   async findOne(id: number) {
+    if (!id) {
+      return null;
+    }
     const user = await this.repo.findOneBy({ id });
-    console.log(user);
     return user;
   }
 
@@ -23,12 +25,17 @@ export class UsersService {
     return users;
   }
 
+  findAll() {
+    const users = this.repo.find();
+    return users;
+  }
+
   async update(id: number, attr: Partial<User>) {
     const user = await this.findOne(id);
-    if (user) {
+    if (!user) {
       throw new Error('User not found');
     }
-
+    //Override properties of found user by new props
     Object.assign(user, attr);
     return this.repo.save(user);
   }

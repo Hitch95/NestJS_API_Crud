@@ -1,13 +1,38 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { CreateReportDto } from './dtos/create-report.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Report } from './report.entity';
-import { CreateReportDto } from 'src/dto/create-report-dto';
-import { User } from 'src/users/user.entity';
+import { User } from '../users/user.entity';
+import { GetEstimateDto } from './dtos/get-estimate.dto';
 
 @Injectable()
 export class ReportsService {
   constructor(@InjectRepository(Report) private repo: Repository<Report>) {}
+
+  createEstimate(estimateDto: GetEstimateDto) {
+    return this.repo
+      .createQueryBuilder()
+      .select('AVG(price)', 'price')
+      .where('make = :make', { make: estimateDto.make })
+      .andWhere('model = :model', { model: estimateDto.model })
+      .andWhere('lat - :lat BETWEEN -5 AND 5', { lat: estimateDto.lat })
+      .andWhere('lng - :lng BETWEEN -5 AND 5', { lng: estimateDto.lng })
+      .andWhere('year - :year BETWEEN -3 AND 3', { year: estimateDto.year })
+      .andWhere('approved is TRUE')
+      .orderBy('ABS(mileage - :mileage)', 'DESC')
+      .setParameters({ mileage: estimateDto.mileage })
+      .limit(3)
+      .getRawMany();
+  }
+
+  getStatsCars() {
+    return this.repo
+      .createQueryBuilder()
+      .select('make, SUM(price)', 'totalPrice')
+      .groupBy('make')
+      .getRawMany();
+  }
 
   create(reportDto: CreateReportDto, user: User) {
     const report = this.repo.create(reportDto);
@@ -15,33 +40,16 @@ export class ReportsService {
     return this.repo.save(report);
   }
 
-  async findOne(id: number) {
-    const report = await this.repo.findOneBy({ id });
-    console.log(report);
-    return report;
-  }
+  async changeApproval(id: string, approved: boolean) {
+    const report = await this.repo.findOne({
+      where: { id: parseInt(id) },
+    });
 
-  find(model: string) {
-    const reports = this.repo.findBy({ model });
-    return reports;
-  }
-
-  async update(id: number, attr: Partial<Report>) {
-    const report = await this.findOne(id);
-    if (report) {
-      throw new Error('Report not found');
-    }
-
-    Object.assign(report, attr);
-    return this.repo.save(report);
-  }
-
-  async remove(id: number) {
-    const report = await this.findOne(id);
     if (!report) {
-      throw new Error('Report not found');
+      throw new NotFoundException('report not found');
     }
-    await this.repo.remove(report);
-    return `Report ${id} removed`;
+
+    report.approved = approved;
+    return this.repo.save(report);
   }
 }
